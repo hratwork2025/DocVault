@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CivicLight — Streetlight Fault Reporting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3F5F4; --surface:#FFFFFF; --surface-alt:#ECEFEE; --ink:#151B22; --ink-soft:#4A5560; --muted:#6C7680;
+    --border:#DCE2DF; --accent:#C97A22; --accent-soft:#FBEEDD; --accent-ink:#5B3810;
+    --success:#2E7D53; --success-soft:#E4F3EA; --warn:#B4551A; --warn-soft:#FBEAE0;
+    --danger:#B23A3A; --danger-soft:#F8E4E4; --info:#2B6C8C; --info-soft:#E3F1F6;
+    --navy:#12202F; --navy-ink:#EAEEF3; --radius-sm:6px; --radius-md:12px;
+    --font-display:'Space Grotesk',sans-serif; --font-body:'IBM Plex Sans',sans-serif; --font-mono:'IBM Plex Mono',monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0A1119; --surface:#111B29; --surface-alt:#16233A; --ink:#E8ECF1; --ink-soft:#B7C1CE; --muted:#8894A3;
+      --border:#233047; --accent:#F5A93F; --accent-soft:#3A2A10; --accent-ink:#FCE3B8;
+      --success:#4CAE7F; --success-soft:#123425; --warn:#E08A45; --warn-soft:#3A2515;
+      --danger:#E5726F; --danger-soft:#3A1A18; --info:#63B0D6; --info-soft:#12293A;
+      --navy:#0A1119; --navy-ink:#E8ECF1;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0A1119; --surface:#111B29; --surface-alt:#16233A; --ink:#E8ECF1; --ink-soft:#B7C1CE; --muted:#8894A3;
+    --border:#233047; --accent:#F5A93F; --accent-soft:#3A2A10; --accent-ink:#FCE3B8;
+    --success:#4CAE7F; --success-soft:#123425; --warn:#E08A45; --warn-soft:#3A2515;
+    --danger:#E5726F; --danger-soft:#3A1A18; --info:#63B0D6; --info-soft:#12293A;
+    --navy:#0A1119; --navy-ink:#E8ECF1;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:var(--font-display);font-weight:600;margin:0 0 4px;color:var(--ink);}
+  p{margin:0 0 8px;}
+  a{color:var(--accent);}
+  .mono{font-family:var(--font-mono);}
+  .muted{color:var(--muted);}
+  .hidden{display:none !important;}
+  button{font-family:var(--font-body);cursor:pointer;}
+  input,select,textarea{font-family:var(--font-body);font-size:15px;}
+
+  /* ---------- Buttons & fields ---------- */
+  .btn{border:1px solid transparent;border-radius:var(--radius-sm);padding:10px 16px;font-size:14px;font-weight:600;transition:transform .08s ease, opacity .15s ease;}
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--accent);color:#1a1204;}
+  :root:not([data-theme="light"]) .btn-primary{color:#241503;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn-primary{color:#241503;}}
+  .btn-primary:hover{opacity:.92;}
+  .btn-secondary{background:var(--surface-alt);color:var(--ink);border-color:var(--border);}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border-color:var(--border);}
+  .btn-sm{padding:7px 12px;font-size:13px;}
+  .btn-block{width:100%;}
+  .btn:disabled{opacity:.6;cursor:default;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  input[type=text],input[type=email],input[type=password],input[type=tel],input[type=search],input[type=number],select,textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  textarea{resize:vertical;}
+  .error-text{background:var(--danger-soft);color:var(--danger);border-radius:var(--radius-sm);padding:10px 12px;font-size:13.5px;margin-bottom:14px;}
+  .hint-box{background:var(--info-soft);color:var(--info);border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;margin-bottom:16px;line-height:1.5;}
+
+  /* ---------- Auth screen ---------- */
+  .auth-wrap{min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr;}
+  .auth-hero{background:var(--navy);color:var(--navy-ink);padding:48px 44px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;}
+  .hero-brand{font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:.02em;opacity:.9;margin-bottom:28px;}
+  .auth-hero h1{color:var(--navy-ink);font-size:2.15rem;line-height:1.18;max-width:420px;margin-bottom:14px;}
+  .auth-hero p{max-width:400px;opacity:.82;font-size:14.5px;}
+  .hero-footer{font-size:12.5px;opacity:.65;margin-top:32px;}
+  .hero-svg{position:absolute;right:-30px;top:-20px;width:320px;height:320px;opacity:.95;}
+  .auth-panel{background:var(--surface);padding:48px 44px;display:flex;flex-direction:column;justify-content:center;max-width:520px;width:100%;margin:0 auto;}
+  .role-tabs{display:flex;background:var(--surface-alt);border-radius:var(--radius-sm);padding:4px;margin-bottom:20px;}
+  .role-tab{flex:1;border:none;background:transparent;padding:9px;border-radius:calc(var(--radius-sm) - 2px);font-weight:600;font-size:13.5px;color:var(--muted);}
+  .role-tab.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08);}
+  .form-tabs{display:flex;gap:18px;margin-bottom:18px;border-bottom:1px solid var(--border);}
+  .form-tab{border:none;background:none;padding:8px 2px 12px;font-weight:600;font-size:14px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .form-tab.active{color:var(--ink);border-bottom-color:var(--accent);}
+
+  /* ---------- App shell ---------- */
+  .app-header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:5;}
+  .brand-mini{font-family:var(--font-display);font-weight:700;font-size:16px;}
+  .header-right{display:flex;align-items:center;gap:14px;}
+  .user-chip{text-align:right;line-height:1.3;}
+  .user-name{display:block;font-weight:600;font-size:13.5px;}
+  .user-role{display:block;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .container{max-width:1040px;margin:0 auto;padding:32px 32px 64px;}
+  .page-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:24px;}
+
+  /* ---------- Stats ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:32px;}
+  .stat-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px 18px;}
+  .stat-num{font-family:var(--font-display);font-size:1.9rem;font-weight:700;}
+  .stat-label{font-size:12.5px;color:var(--muted);margin-top:2px;}
+  .stat-tile.stat-warn .stat-num{color:var(--warn);}
+
+  .section-title{font-size:1.05rem;margin-bottom:14px;}
+
+  /* ---------- Ticket cards (citizen) ---------- */
+  .ticket-list{display:grid;gap:12px;}
+  .ticket-card{display:flex;gap:14px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:border-color .12s ease;}
+  .ticket-card:hover{border-color:var(--accent);}
+  .ticket-thumb{width:64px;height:64px;flex:none;border-radius:8px;overflow:hidden;background:var(--surface-alt);display:flex;align-items:center;justify-content:center;font-size:24px;}
+  .ticket-thumb img{width:100%;height:100%;object-fit:cover;}
+  .ticket-body{flex:1;min-width:0;}
+  .ticket-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px;}
+  .ticket-id{font-family:var(--font-mono);font-size:12px;color:var(--muted);}
+  .ticket-cat{font-weight:600;font-size:14.5px;}
+  .ticket-desc{font-size:13px;color:var(--ink-soft);margin:3px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ticket-meta{font-size:12px;color:var(--muted);}
+
+  /* ---------- Status badges ---------- */
+  .badge{display:inline-block;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  .badge-submitted{background:var(--info-soft);color:var(--info);}
+  .badge-progress{background:var(--warn-soft);color:var(--warn);}
+  .badge-resolved{background:var(--success-soft);color:var(--success);}
+  .badge-rejected{background:var(--danger-soft);color:var(--danger);}
+
+  /* ---------- Empty / loading states ---------- */
+  .empty-state{text-align:center;padding:56px 20px;border:1px dashed var(--border);border-radius:var(--radius-md);color:var(--muted);}
+  .empty-icon{font-size:30px;margin-bottom:10px;}
+
+  /* ---------- Admin toolbar & table ---------- */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .toolbar input[type=search]{flex:1;min-width:200px;}
+  .toolbar select{width:auto;}
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px;}
+  th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--border);}
+  td{padding:12px 16px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr.table-row{cursor:pointer;}
+  tr.table-row:hover{background:var(--surface-alt);}
+  tr.table-row:last-child td{border-bottom:none;}
+  .row-overdue td:first-child{box-shadow:inset 3px 0 0 var(--warn);}
+  .overdue-flag{margin-left:4px;}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(10,15,20,.5);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modal{background:var(--surface);border-radius:var(--radius-md);max-width:560px;width:100%;max-height:88vh;overflow-y:auto;}
+  .modal-header{display:flex;align-items:center;gap:10px;padding:20px 24px 14px;border-bottom:1px solid var(--border);}
+  .modal-header h3{flex:1;font-size:1.1rem;margin:0;font-family:var(--font-mono);}
+  .modal-close{background:none;border:none;font-size:16px;color:var(--muted);padding:4px;}
+  .modal-body{padding:20px 24px;}
+  .modal-footer{display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid var(--border);}
+  .detail-photo{width:100%;max-height:260px;object-fit:cover;border-radius:var(--radius-sm);margin-bottom:16px;background:var(--surface-alt);}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+  .detail-label{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);display:block;margin-bottom:3px;}
+  .detail-desc{margin-bottom:16px;}
+  .detail-desc p{font-size:14px;}
+  .muted-small{font-size:11.5px;color:var(--muted);}
+
+  /* ---------- Timeline ---------- */
+  .timeline{display:flex;flex-direction:column;gap:14px;margin-top:6px;}
+  .timeline-item{display:flex;gap:10px;}
+  .timeline-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:6px;flex:none;}
+  .timeline-status{font-weight:600;font-size:13.5px;}
+  .timeline-date{font-size:11.5px;color:var(--muted);}
+  .timeline-note{font-size:13px;color:var(--ink-soft);margin-top:2px;}
+
+  /* ---------- Report form extras ---------- */
+  .loc-status{font-size:12.5px;color:var(--muted);margin-top:8px;min-height:16px;}
+  .manual-loc-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  #photo-preview-wrap{margin-top:10px;}
+  .photo-preview{width:100%;max-height:180px;object-fit:cover;border-radius:var(--radius-sm);}
+
+  /* ---------- Toasts ---------- */
+  #toast-container{position:fixed;bottom:20px;right:20px;z-index:100;display:flex;flex-direction:column;gap:8px;}
+  .toast{background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:var(--radius-sm);font-size:13.5px;opacity:0;transform:translateY(8px);transition:opacity .25s ease, transform .25s ease;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast-danger{background:var(--danger);color:#fff;}
+
+  .center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:32px;}
+  .center-screen .box{max-width:380px;}
+
+  @media (max-width: 860px){
+    .auth-wrap{grid-template-columns:1fr;}
+    .auth-hero{padding:36px 28px;min-height:220px;}
+    .auth-hero h1{font-size:1.5rem;}
+    .hero-svg{width:200px;height:200px;}
+    .auth-panel{padding:32px 24px;}
+    .field-row{grid-template-columns:1fr;}
+    .container{padding:24px 18px 48px;}
+    .app-header{padding:14px 18px;}
+    .detail-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="shell"></div>
+  <div id="modal-root"></div>
+  <div id="toast-container"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var CATEGORIES = ["Lamp not lighting","Flickering / intermittent light","Broken or leaning pole","Exposed wiring","Light stays on during daytime","Other"];
+  var STATUSES = ["Submitted","In Progress","Resolved","Rejected"];
+  var DEFAULT_ADMIN_EMAIL = "admin@civiclight.gov";
+  var DEFAULT_ADMIN_PASSWORD = "Admin@123";
+
+  var dbCap = null, assetsCap = null;
+  var session = null;
+  var unsubscribers = [];
+  var myComplaints = [], allComplaints = [];
+  var citizenLoaded = false, adminLoaded = false;
+  var capturedLocation = null;
+  var authUi = { role: "citizen", mode: "login" };
+  var adminFilters = { status: "All", category: "All", q: "", sort: "newest" };
+
+  var HERO_SVG = '<svg class="hero-svg" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<defs><radialGradient id="glow" cx="55%" cy="30%" r="55%">' +
+    '<stop offset="0%" stop-color="#F5A93F" stop-opacity="0.55"/>' +
+    '<stop offset="100%" stop-color="#F5A93F" stop-opacity="0"/></radialGradient></defs>' +
+    '<circle cx="190" cy="110" r="120" fill="url(#glow)"/>' +
+    '<rect x="182" y="130" width="9" height="150" rx="3" fill="#EAEEF3" opacity="0.85"/>' +
+    '<rect x="160" y="272" width="53" height="9" rx="3" fill="#EAEEF3" opacity="0.55"/>' +
+    '<path d="M191 138 C191 118 210 108 236 104" stroke="#EAEEF3" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.85"/>' +
+    '<ellipse cx="238" cy="100" rx="19" ry="11" fill="#F5A93F"/>' +
+    '<rect x="228" y="86" width="20" height="10" rx="3" fill="#EAEEF3" opacity="0.85"/>' +
+    '<circle cx="60" cy="60" r="2.4" fill="#EAEEF3" opacity="0.5"/>' +
+    '<circle cx="90" cy="40" r="1.8" fill="#EAEEF3" opacity="0.4"/>' +
+    '<circle cx="40" cy="110" r="1.8" fill="#EAEEF3" opacity="0.4"/>' +
+    '<circle cx="270" cy="200" r="2.2" fill="#EAEEF3" opacity="0.35"/>' +
+    '</svg>';
+
+  /* ---------------- helpers ---------------- */
+  function $(id){ return document.getElementById(id); }
+  function escapeHtml(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];
+    });
+  }
+  function truncate(s, n){ s = s || ""; return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+  function firstName(name){ return (name || "").split(" ")[0] || name || ""; }
+  function nowIso(){ return new Date().toISOString(); }
+  function formatDate(iso){
+    if(!iso) return "—";
+    var d = new Date(iso);
+    return d.toLocaleString(undefined, { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
+  }
+  function generateTicketNo(){
+    var y = new Date().getFullYear();
+    var rand = Math.random().toString(36).slice(2,6).toUpperCase();
+    return "CL-" + y + "-" + rand;
+  }
+  function isOverdue(c){
+    if(c.status !== "Submitted" && c.status !== "In Progress") return false;
+    return (Date.now() - new Date(c.createdAt).getTime()) > 7 * 24 * 3600 * 1000;
+  }
+  async function hashPassword(pw){
+    var enc = new TextEncoder().encode(pw);
+    var buf = await crypto.subtle.digest("SHA-256", enc);
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,"0"); }).join("");
+  }
+  function statusBadgeHtml(status){
+    var map = { "Submitted":"badge-submitted", "In Progress":"badge-progress", "Resolved":"badge-resolved", "Rejected":"badge-rejected" };
+    return '<span class="badge ' + (map[status] || "badge-submitted") + '">' + escapeHtml(status) + '</span>';
+  }
+  function locationLineHtml(c){
+    if(c.location && typeof c.location.lat === "number"){
+      var lat = c.location.lat, lng = c.location.lng;
+      return '<a href="https://www.google.com/maps?q=' + lat + ',' + lng + '" target="_blank" rel="noopener">' +
+        lat.toFixed(5) + ', ' + lng.toFixed(5) + '</a> <span class="muted-small">(' + (c.location.source === "gps" ? "GPS" : "manual") + ')</span>';
+    }
+    return "Not captured";
+  }
+  function toast(msg, type){
+    var c = $("toast-container");
+    var t = document.createElement("div");
+    t.className = "toast" + (type === "danger" ? " toast-danger" : "");
+    t.textContent = msg;
+    c.appendChild(t);
+    requestAnimationFrame(function(){ t.classList.add("show"); });
+    setTimeout(function(){ t.classList.remove("show"); setTimeout(function(){ t.remove(); }, 300); }, 3200);
+  }
+  function emptyStateHtml(msg){
+    return '<div class="empty-state"><div class="empty-icon">💡</div><p>' + escapeHtml(msg) + '</p></div>';
+  }
+  function loadingStateHtml(msg){
+    return '<div class="empty-state"><p class="muted">' + escapeHtml(msg) + '</p></div>';
+  }
+  function clearSubscriptions(){
+    unsubscribers.forEach(function(u){ try{ u(); }catch(e){} });
+    unsubscribers = [];
+  }
+
+  /* ---------------- modal ---------------- */
+  function openModal(html){
+    $("modal-root").innerHTML = '<div class="modal-overlay"><div class="modal">' + html + '</div></div>';
+  }
+  function closeModal(){
+    $("modal-root").innerHTML = "";
+    capturedLocation = null;
+  }
+
+  /* ---------------- bootstrap ---------------- */
+  async function ensureDefaultAdmin(){
+    try{
+      var snap = await dbCap.collection("users").where("role","==","admin").limit(1).get();
+      if(snap.empty){
+        var pwHash = await hashPassword(DEFAULT_ADMIN_PASSWORD);
+        await dbCap.collection("users").doc("admin_default").set({
+          name: "System Administrator", email: DEFAULT_ADMIN_EMAIL, phone: "", role: "admin",
+          passwordHash: pwHash, createdAt: nowIso()
+        });
+      }
+    }catch(e){ console.error("admin bootstrap failed", e); }
+  }
+
+  async function init(){
+    renderLoadingScreen();
+    var results = await Promise.all([
+      (window.claude && window.claude.use) ? window.claude.use("db") : Promise.resolve(null),
+      (window.claude && window.claude.use) ? window.claude.use("assets") : Promise.resolve(null)
+    ]);
+    dbCap = results[0]; assetsCap = results[1];
+    if(!dbCap){ renderUnavailableScreen(); return; }
+    await ensureDefaultAdmin();
+    var saved = null;
+    try{ saved = JSON.parse(sessionStorage.getItem("cl_session") || "null"); }catch(e){ saved = null; }
+    if(saved && saved.role === "citizen"){ session = saved; startCitizenDashboard(); }
+    else if(saved && saved.role === "admin"){ session = saved; startAdminDashboard(); }
+    else{ renderAuth(); }
+  }
+
+  function renderLoadingScreen(){
+    $("shell").innerHTML = '<div class="center-screen"><div class="box"><h2>CivicLight</h2><p class="muted">Connecting…</p></div></div>';
+  }
+  function renderUnavailableScreen(){
+    $("shell").innerHTML = '<div class="center-screen"><div class="box"><h2>CivicLight is unavailable here</h2>' +
+      '<p class="muted">This app needs data access to run. Open it from your Claude artifacts, or ask the owner for access, then reload.</p>' +
+      '<button class="btn btn-secondary" onclick="location.reload()">Reload</button></div></div>';
+  }
+
+  /* ---------------- auth ---------------- */
+  function renderAuth(){
+    var role = authUi.role, mode = authUi.mode;
+    var formHtml;
+    if(role === "admin"){
+      formHtml =
+        '<div class="hint-box">Demo administrator login<br><span class="mono">' + DEFAULT_ADMIN_EMAIL + ' / ' + DEFAULT_ADMIN_PASSWORD + '</span></div>' +
+        '<div class="field"><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="username"></div>' +
+        '<div class="field"><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password"></div>' +
+        '<button class="btn btn-primary btn-block" data-action="submit-login">Log in as administrator</button>';
+    } else if(mode === "login"){
+      formHtml =
+        '<div class="field"><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="username"></div>' +
+        '<div class="field"><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password"></div>' +
+        '<button class="btn btn-primary btn-block" data-action="submit-login">Log in</button>';
+    } else {
+      formHtml =
+        '<div class="field-row"><div class="field"><label for="su-name">Full name</label><input id="su-name" type="text"></div>' +
+        '<div class="field"><label for="su-phone">Phone</label><input id="su-phone" type="tel"></div></div>' +
+        '<div class="field"><label for="su-email">Email</label><input id="su-email" type="email"></div>' +
+        '<div class="field"><label for="su-address">Ward / area</label><input id="su-address" type="text" placeholder="e.g. Ward 12, Jayanagar"></div>' +
+        '<div class="field-row"><div class="field"><label for="su-password">Password</label><input id="su-password" type="password"></div>' +
+        '<div class="field"><label for="su-confirm">Confirm password</label><input id="su-confirm" type="password"></div></div>' +
+        '<button class="btn btn-primary btn-block" data-action="submit-signup">Create citizen account</button>';
+    }
+    $("shell").innerHTML =
+      '<div class="auth-wrap">' +
+        '<div class="auth-hero">' + HERO_SVG +
+          '<div class="hero-brand">💡 CIVICLIGHT</div>' +
+          '<div class="hero-text"><h1>Report a faulty streetlight in minutes.</h1>' +
+          '<p>A ward-level digital service for reporting and tracking streetlight maintenance — attach a photo, share the location, and follow your report through to resolution.</p></div>' +
+          '<div class="hero-footer">Pilot digital service · Ward Infrastructure Cell</div>' +
+        '</div>' +
+        '<div class="auth-panel">' +
+          '<div class="role-tabs">' +
+            '<button class="role-tab ' + (role==="citizen"?"active":"") + '" data-action="tab-role" data-role="citizen">Citizen</button>' +
+            '<button class="role-tab ' + (role==="admin"?"active":"") + '" data-action="tab-role" data-role="admin">Administrator</button>' +
+          '</div>' +
+          (role === "citizen" ?
+            '<div class="form-tabs">' +
+              '<button class="form-tab ' + (mode==="login"?"active":"") + '" data-action="tab-mode" data-mode="login">Log in</button>' +
+              '<button class="form-tab ' + (mode==="signup"?"active":"") + '" data-action="tab-mode" data-mode="signup">Sign up</button>' +
+            '</div>' : '') +
+          '<div class="error-text" id="auth-error" style="display:none"></div>' +
+          formHtml +
+        '</div>' +
+      '</div>';
+  }
+  function showAuthError(msg){
+    var el = $("auth-error");
+    if(!el) return;
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+
+  async function handleLogin(role){
+    var email = ($("auth-email").value || "").trim().toLowerCase();
+    var password = $("auth-password").value || "";
+    if(!email || !password){ showAuthError("Enter your email and password."); return; }
+    try{
+      var snap = await dbCap.collection("users").where("email","==",email).limit(1).get();
+      if(snap.empty){ showAuthError("No account found with this email."); return; }
+      var doc = snap.docs[0], data = doc.data();
+      if(data.role !== role){ showAuthError("This account is not registered as " + (role==="admin"?"an administrator.":"a citizen.")); return; }
+      var pwHash = await hashPassword(password);
+      if(pwHash !== data.passwordHash){ showAuthError("Incorrect password."); return; }
+      session = { uid: doc.id, role: role, name: data.name, email: data.email, phone: data.phone || "" };
+      sessionStorage.setItem("cl_session", JSON.stringify(session));
+      if(role === "admin") startAdminDashboard(); else startCitizenDashboard();
+    }catch(e){ console.error(e); showAuthError("Something went wrong. Please try again."); }
+  }
+
+  async function handleCitizenSignup(){
+    var name = ($("su-name").value || "").trim();
+    var phone = ($("su-phone").value || "").trim();
+    var email = ($("su-email").value || "").trim().toLowerCase();
+    var address = ($("su-address").value || "").trim();
+    var password = $("su-password").value || "";
+    var confirm = $("su-confirm").value || "";
+    if(!name || !email || !address){ showAuthError("Please fill in your name, email and ward/area."); return; }
+    if(!/^\S+@\S+\.\S+$/.test(email)){ showAuthError("Enter a valid email address."); return; }
+    if(password.length < 6){ showAuthError("Password must be at least 6 characters."); return; }
+    if(password !== confirm){ showAuthError("Passwords do not match."); return; }
+    try{
+      var existing = await dbCap.collection("users").where("email","==",email).limit(1).get();
+      if(!existing.empty){ showAuthError("An account with this email already exists."); return; }
+      var pwHash = await hashPassword(password);
+      var ref = await dbCap.collection("users").add({
+        name: name, email: email, phone: phone, address: address, role: "citizen",
+        passwordHash: pwHash, createdAt: nowIso()
+      });
+      session = { uid: ref.id, role: "citizen", name: name, email: email, phone: phone };
+      sessionStorage.setItem("cl_session", JSON.stringify(session));
+      toast("Account created — welcome!");
+      startCitizenDashboard();
+    }catch(e){ console.error(e); showAuthError("Something went wrong. Please try again."); }
+  }
+
+  function logout(){
+    clearSubscriptions();
+    session = null;
+    sessionStorage.removeItem("cl_session");
+    authUi = { role: "citizen", mode: "login" };
+    renderAuth();
+  }
+
+  function appHeaderHtml(){
+    return '<header class="app-header">' +
+      '<div class="brand-mini">💡 CivicLight</div>' +
+      '<div class="header-right"><div class="user-chip"><span class="user-name">' + escapeHtml(session.name) + '</span>' +
+      '<span class="user-role">' + (session.role==="admin"?"Administrator":"Citizen") + '</span></div>' +
+      '<button class="btn btn-ghost btn-sm" data-action="logout">Log out</button></div>' +
+      '</header>';
+  }
+
+  /* ---------------- citizen dashboard ---------------- */
+  function startCitizenDashboard(){
+    clearSubscriptions();
+    myComplaints = []; citizenLoaded = false;
+    renderCitizenShell();
+    var unsub = dbCap.collection("complaints").where("citizenId","==",session.uid).orderBy("createdAt","desc").onSnapshot(function(snap){
+      myComplaints = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      citizenLoaded = true;
+      renderCitizenShell();
+    }, function(err){ console.error(err); toast("Live updates unavailable.", "danger"); });
+    unsubscribers.push(unsub);
+  }
+
+  function buildTicketCardHtml(c){
+    var thumb = c.photoAssetId ? '<img src="/_blob/' + c.photoAssetId + '" alt="">' : '<span>💡</span>';
+    return '<div class="ticket-card" data-action="open-citizen-detail" data-id="' + c.id + '">' +
+      '<div class="ticket-thumb">' + thumb + '</div>' +
+      '<div class="ticket-body">' +
+        '<div class="ticket-top"><span class="ticket-id">' + escapeHtml(c.ticketNo) + '</span>' + statusBadgeHtml(c.status) + '</div>' +
+        '<div class="ticket-cat">' + escapeHtml(c.category) + '</div>' +
+        '<p class="ticket-desc">' + escapeHtml(truncate(c.description || "", 90)) + '</p>' +
+        '<div class="ticket-meta">' + escapeHtml(c.landmark || "Location shared via GPS") + ' · ' + formatDate(c.createdAt) + '</div>' +
+      '</div></div>';
+  }
+
+  function renderCitizenShell(){
+    var total = myComplaints.length;
+    var inProgress = myComplaints.filter(function(c){ return c.status === "In Progress"; }).length;
+    var resolved = myComplaints.filter(function(c){ return c.status === "Resolved"; }).length;
+    var listHtml;
+    if(myComplaints.length){ listHtml = '<div class="ticket-list">' + myComplaints.map(buildTicketCardHtml).join("") + '</div>'; }
+    else if(citizenLoaded){ listHtml = emptyStateHtml("No reports yet — spotted a fault nearby? Let us know."); }
+    else{ listHtml = loadingStateHtml("Loading your reports…"); }
+
+    $("shell").innerHTML = appHeaderHtml() +
+      '<main class="container">' +
+        '<div class="page-head"><div><h1>Welcome back, ' + escapeHtml(firstName(session.name)) + '</h1>' +
+        '<p class="muted">Track the streetlight faults you\'ve reported around your ward.</p></div>' +
+        '<button class="btn btn-primary" data-action="open-report-form">+ Report a fault</button></div>' +
+        '<div class="stat-grid">' +
+          '<div class="stat-tile"><div class="stat-num">' + total + '</div><div class="stat-label">Total reports</div></div>' +
+          '<div class="stat-tile"><div class="stat-num">' + inProgress + '</div><div class="stat-label">In progress</div></div>' +
+          '<div class="stat-tile"><div class="stat-num">' + resolved + '</div><div class="stat-label">Resolved</div></div>' +
+        '</div>' +
+        '<h2 class="section-title">Your reports</h2>' + listHtml +
+      '</main>';
+  }
+
+  function openCitizenDetail(id){
+    var c = myComplaints.find(function(x){ return x.id === id; });
+    if(!c) return;
+    var historyHtml = (c.history || []).map(function(h){
+      return '<div class="timeline-item"><span class="timeline-dot"></span><div><div class="timeline-status">' + escapeHtml(h.status) + '</div>' +
+        '<div class="timeline-date">' + formatDate(h.at) + '</div>' + (h.note ? '<div class="timeline-note">' + escapeHtml(h.note) + '</div>' : '') + '</div></div>';
+    }).join("");
+    openModal(
+      '<div class="modal-header"><h3>' + escapeHtml(c.ticketNo) + '</h3>' + statusBadgeHtml(c.status) +
+      '<button class="modal-close" data-action="close-modal">✕</button></div>' +
+      '<div class="modal-body">' +
+        (c.photoAssetId ? '<img class="detail-photo" src="/_blob/' + c.photoAssetId + '" alt="Fault photo">' : '') +
+        '<div class="detail-grid">' +
+          '<div><span class="detail-label">Category</span><div>' + escapeHtml(c.category) + '</div></div>' +
+          '<div><span class="detail-label">Submitted</span><div>' + formatDate(c.createdAt) + '</div></div>' +
+          '<div><span class="detail-label">Landmark</span><div>' + escapeHtml(c.landmark || "—") + '</div></div>' +
+          '<div><span class="detail-label">Location</span><div>' + locationLineHtml(c) + '</div></div>' +
+        '</div>' +
+        '<div class="detail-desc"><span class="detail-label">Description</span><p>' + escapeHtml(c.description) + '</p></div>' +
+        (c.adminRemarks ? '<div class="detail-desc"><span class="detail-label">Note from administrator</span><p>' + escapeHtml(c.adminRemarks) + '</p></div>' : '') +
+        '<span class="detail-label">Status timeline</span><div class="timeline">' + historyHtml + '</div>' +
+      '</div>'
+    );
+  }
+
+  /* ---------------- report form ---------------- */
+  function openReportForm(){
+    capturedLocation = null;
+    openModal(
+      '<div class="modal-header"><h3 style="font-family:var(--font-display)">Report a streetlight fault</h3>' +
+      '<button class="modal-close" data-action="close-modal">✕</button></div>' +
+      '<div class="modal-body">' +
+        '<div class="error-text" id="report-error" style="display:none"></div>' +
+        '<div class="field"><label for="report-category">What\'s wrong?</label><select id="report-category">' +
+          CATEGORIES.map(function(c){ return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>'; }).join("") +
+        '</select></div>' +
+        '<div class="field"><label for="report-desc">Describe the fault</label>' +
+        '<textarea id="report-desc" rows="3" placeholder="e.g. The lamp near the bus stop has been off for 3 nights"></textarea></div>' +
+        '<div class="field"><label for="report-landmark">Landmark / address (recommended)</label>' +
+        '<input id="report-landmark" type="text" placeholder="e.g. Opposite Ganesha temple, 4th Main Road"></div>' +
+        '<div class="field"><label>Location</label>' +
+          '<button type="button" class="btn btn-secondary btn-block" data-action="use-location">📍 Use my current location</button>' +
+          '<div id="loc-status" class="loc-status"></div>' +
+          '<div id="manual-loc-fields" class="manual-loc-fields hidden">' +
+            '<input id="manual-lat" type="number" step="any" placeholder="Latitude">' +
+            '<input id="manual-lng" type="number" step="any" placeholder="Longitude">' +
+          '</div>' +
+        '</div>' +
+        '<div class="field"><label for="report-photo">Photo of the fault</label>' +
+        '<input id="report-photo" type="file" accept="image/*" capture="environment">' +
+        '<div id="photo-preview-wrap"></div></div>' +
+      '</div>' +
+      '<div class="modal-footer">' +
+        '<button class="btn btn-ghost" data-action="close-modal">Cancel</button>' +
+        '<button class="btn btn-primary" id="submit-report-btn" data-action="submit-report">Submit report</button>' +
+      '</div>'
+    );
+  }
+
+  function useLocation(){
+    var statusEl = $("loc-status");
+    if(!navigator.geolocation){
+      statusEl.textContent = "Geolocation isn't supported here — please enter details manually below.";
+      $("manual-loc-fields").classList.remove("hidden");
+      return;
+    }
+    statusEl.textContent = "Locating…";
+    navigator.geolocation.getCurrentPosition(function(pos){
+      capturedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy, source: "gps" };
+      statusEl.innerHTML = "Location captured — " + capturedLocation.lat.toFixed(5) + ", " + capturedLocation.lng.toFixed(5) +
+        " (±" + Math.round(capturedLocation.accuracy) + " m) · " +
+        '<a href="https://www.google.com/maps?q=' + capturedLocation.lat + ',' + capturedLocation.lng + '" target="_blank" rel="noopener">View on map</a>';
+      $("manual-loc-fields").classList.add("hidden");
+    }, function(err){
+      statusEl.textContent = "Couldn't access your location (" + (err && err.message ? err.message : "permission denied") + "). Enter it manually below.";
+      $("manual-loc-fields").classList.remove("hidden");
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  }
+
+  function formError(msg){
+    var el = $("report-error");
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+
+  async function submitReport(){
+    var btn = $("submit-report-btn");
+    $("report-error").style.display = "none";
+    var category = $("report-category").value;
+    var description = ($("report-desc").value || "").trim();
+    var landmark = ($("report-landmark").value || "").trim();
+    var file = $("report-photo").files[0];
+    var manualLat = $("manual-lat").value;
+    var manualLng = $("manual-lng").value;
+
+    if(description.length < 10){ formError("Please add a few more details about the fault."); return; }
+    if(!file){ formError("Please attach a photo of the fault."); return; }
+    var location = capturedLocation;
+    if(!location && manualLat && manualLng){ location = { lat: parseFloat(manualLat), lng: parseFloat(manualLng), source: "manual" }; }
+    if(!location && !landmark){ formError("Add a landmark, or share your location, so the crew can find the fault."); return; }
+
+    btn.disabled = true; btn.textContent = "Submitting…";
+    try{
+      if(!assetsCap){ throw new Error("Photo upload isn't available in this view."); }
+      var uploadResult = await assetsCap.upload(file);
+      var now = nowIso();
+      var ticketNo = generateTicketNo();
+      await dbCap.collection("complaints").add({
+        ticketNo: ticketNo, citizenId: session.uid, citizenName: session.name, citizenEmail: session.email, citizenPhone: session.phone || "",
+        category: category, description: description, landmark: landmark, location: location || null,
+        photoAssetId: uploadResult.id, status: "Submitted", adminRemarks: "",
+        createdAt: now, updatedAt: now,
+        history: [{ status: "Submitted", at: now, note: "Report submitted by citizen." }]
+      });
+      toast("Report submitted — ticket " + ticketNo);
+      closeModal();
+    }catch(e){
+      console.error(e);
+      formError("Something went wrong: " + (e && e.message ? e.message : "please try again."));
+      btn.disabled = false; btn.textContent = "Submit report";
+    }
+  }
+
+  /* ---------------- admin dashboard ---------------- */
+  function startAdminDashboard(){
+    clearSubscriptions();
+    allComplaints = []; adminLoaded = false;
+    adminFilters = { status: "All", category: "All", q: "", sort: "newest" };
+    renderAdminShell();
+    var unsub = dbCap.collection("complaints").orderBy("createdAt","desc").onSnapshot(function(snap){
+      allComplaints = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      adminLoaded = true;
+      if($("admin-table-container")) renderAdminTableOnly(); else renderAdminShell();
+    }, function(err){ console.error(err); toast("Live updates unavailable.", "danger"); });
+    unsubscribers.push(unsub);
+  }
+
+  function renderAdminShell(){
+    $("shell").innerHTML = appHeaderHtml() +
+      '<main class="container">' +
+        '<div class="page-head"><div><h1>All streetlight complaints</h1>' +
+        '<p class="muted">Live view across every citizen report in the system.</p></div></div>' +
+        '<div class="stat-grid" id="admin-stats"></div>' +
+        '<div class="toolbar">' +
+          '<input id="admin-search" type="search" placeholder="Search ticket, area or citizen…" value="' + escapeHtml(adminFilters.q) + '">' +
+          '<select id="admin-status-filter"><option value="All">All statuses</option>' +
+            STATUSES.map(function(s){ return '<option value="' + s + '"' + (adminFilters.status===s?" selected":"") + '>' + s + '</option>'; }).join("") +
+          '</select>' +
+          '<select id="admin-category-filter"><option value="All">All categories</option>' +
+            CATEGORIES.map(function(c){ return '<option value="' + escapeHtml(c) + '"' + (adminFilters.category===c?" selected":"") + '>' + escapeHtml(c) + '</option>'; }).join("") +
+          '</select>' +
+          '<select id="admin-sort">' +
+            '<option value="newest"' + (adminFilters.sort==="newest"?" selected":"") + '>Newest first</option>' +
+            '<option value="oldest"' + (adminFilters.sort==="oldest"?" selected":"") + '>Oldest first</option>' +
+          '</select>' +
+        '</div>' +
+        '<div id="admin-table-container"></div>' +
+      '</main>';
+    renderAdminStats();
+    renderAdminTableOnly();
+  }
+
+  function renderAdminStats(){
+    var el = $("admin-stats");
+    if(!el) return;
+    var total = allComplaints.length;
+    var open = allComplaints.filter(function(c){ return c.status === "Submitted" || c.status === "In Progress"; }).length;
+    var resolved = allComplaints.filter(function(c){ return c.status === "Resolved"; }).length;
+    var overdue = allComplaints.filter(isOverdue).length;
+    el.innerHTML =
+      '<div class="stat-tile"><div class="stat-num">' + total + '</div><div class="stat-label">Total complaints</div></div>' +
+      '<div class="stat-tile"><div class="stat-num">' + open + '</div><div class="stat-label">Open</div></div>' +
+      '<div class="stat-tile"><div class="stat-num">' + resolved + '</div><div class="stat-label">Resolved</div></div>' +
+      '<div class="stat-tile stat-warn"><div class="stat-num">' + overdue + '</div><div class="stat-label">Overdue (7+ days)</div></div>';
+  }
+
+  function getFilteredSortedComplaints(){
+    var list = allComplaints.slice();
+    if(adminFilters.status !== "All") list = list.filter(function(c){ return c.status === adminFilters.status; });
+    if(adminFilters.category !== "All") list = list.filter(function(c){ return c.category === adminFilters.category; });
+    if(adminFilters.q){
+      var q = adminFilters.q.toLowerCase();
+      list = list.filter(function(c){
+        return (c.ticketNo||"").toLowerCase().indexOf(q) > -1 ||
+          (c.category||"").toLowerCase().indexOf(q) > -1 ||
+          (c.landmark||"").toLowerCase().indexOf(q) > -1 ||
+          (c.citizenName||"").toLowerCase().indexOf(q) > -1 ||
+          (c.description||"").toLowerCase().indexOf(q) > -1;
+      });
+    }
+    list.sort(function(a,b){
+      var da = new Date(a.createdAt).getTime(), db_ = new Date(b.createdAt).getTime();
+      return adminFilters.sort === "oldest" ? da - db_ : db_ - da;
+    });
+    return list;
+  }
+
+  function buildAdminTableHtml(){
+    if(!adminLoaded) return loadingStateHtml("Loading complaints…");
+    var list = getFilteredSortedComplaints();
+    if(list.length === 0) return emptyStateHtml("No complaints match your filters.");
+    var rows = list.map(function(c){
+      var overdue = isOverdue(c);
+      var loc = c.landmark ? c.landmark : (c.location ? c.location.lat.toFixed(4) + ", " + c.location.lng.toFixed(4) : "—");
+      return '<tr data-action="open-admin-detail" data-id="' + c.id + '" class="table-row ' + (overdue ? "row-overdue" : "") + '">' +
+        '<td class="mono">' + escapeHtml(c.ticketNo) + '</td>' +
+        '<td>' + escapeHtml(c.category) + '</td>' +
+        '<td>' + escapeHtml(loc) + '</td>' +
+        '<td>' + escapeHtml(c.citizenName) + '</td>' +
+        '<td>' + formatDate(c.createdAt) + '</td>' +
+        '<td>' + statusBadgeHtml(c.status) + (overdue ? ' <span class="overdue-flag" title="Open for more than 7 days">⏱</span>' : '') + '</td>' +
+      '</tr>';
+    }).join("");
+    return '<div class="table-wrap"><table><thead><tr><th>Ticket</th><th>Category</th><th>Location</th><th>Reported by</th><th>Submitted</th><th>Status</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>';
+  }
+  function renderAdminTableOnly(){
+    var container = $("admin-table-container");
+    if(container) container.innerHTML = buildAdminTableHtml();
+    renderAdminStats();
+  }
+
+  function openAdminDetail(id){
+    var c = allComplaints.find(function(x){ return x.id === id; });
+    if(!c) return;
+    var historyHtml = (c.history || []).map(function(h){
+      return '<div class="timeline-item"><span class="timeline-dot"></span><div><div class="timeline-status">' + escapeHtml(h.status) + '</div>' +
+        '<div class="timeline-date">' + formatDate(h.at) + '</div>' + (h.note ? '<div class="timeline-note">' + escapeHtml(h.note) + '</div>' : '') + '</div></div>';
+    }).join("");
+    openModal(
+      '<div class="modal-header"><h3>' + escapeHtml(c.ticketNo) + '</h3>' + statusBadgeHtml(c.status) +
+      '<button class="modal-close" data-action="close-modal">✕</button></div>' +
+      '<div class="modal-body">' +
+        (c.photoAssetId ? '<img class="detail-photo" src="/_blob/' + c.photoAssetId + '" alt="Fault photo">' : '') +
+        '<div class="detail-grid">' +
+          '<div><span class="detail-label">Category</span><div>' + escapeHtml(c.category) + '</div></div>' +
+          '<div><span class="detail-label">Submitted</span><div>' + formatDate(c.createdAt) + '</div></div>' +
+          '<div><span class="detail-label">Reported by</span><div>' + escapeHtml(c.citizenName) + (c.citizenPhone ? (" · " + escapeHtml(c.citizenPhone)) : "") + '</div></div>' +
+          '<div><span class="detail-label">Contact email</span><div>' + escapeHtml(c.citizenEmail || "—") + '</div></div>' +
+          '<div><span class="detail-label">Landmark</span><div>' + escapeHtml(c.landmark || "—") + '</div></div>' +
+          '<div><span class="detail-label">Location</span><div>' + locationLineHtml(c) + '</div></div>' +
+        '</div>' +
+        '<div class="detail-desc"><span class="detail-label">Description</span><p>' + escapeHtml(c.description) + '</p></div>' +
+        '<div class="field"><label for="admin-status-select">Update status</label><select id="admin-status-select">' +
+          STATUSES.map(function(s){ return '<option value="' + s + '"' + (s===c.status?" selected":"") + '>' + s + '</option>'; }).join("") +
+        '</select></div>' +
+        '<div class="field"><label for="admin-remarks">Remarks for citizen</label>' +
+        '<textarea id="admin-remarks" rows="3" placeholder="e.g. Maintenance crew scheduled for Thursday">' + escapeHtml(c.adminRemarks || "") + '</textarea></div>' +
+        '<span class="detail-label">History</span><div class="timeline">' + historyHtml + '</div>' +
+      '</div>' +
+      '<div class="modal-footer">' +
+        '<button class="btn btn-ghost" data-action="close-modal">Cancel</button>' +
+        '<button class="btn btn-primary" data-action="save-admin-status" data-id="' + c.id + '">Save changes</button>' +
+      '</div>'
+    );
+  }
+
+  async function saveAdminStatus(id){
+    var newStatus = $("admin-status-select").value;
+    var remarks = ($("admin-remarks").value || "").trim();
+    var complaint = allComplaints.find(function(x){ return x.id === id; });
+    if(!complaint) return;
+    var now = nowIso();
+    var entry = { status: newStatus, at: now, note: remarks || ("Status updated to " + newStatus + ".") };
+    var newHistory = (complaint.history || []).concat([entry]);
+    try{
+      await dbCap.collection("complaints").doc(id).update({ status: newStatus, adminRemarks: remarks, updatedAt: now, history: newHistory });
+      toast("Complaint updated.");
+      closeModal();
+    }catch(e){ console.error(e); toast("Update failed — please try again.", "danger"); }
+  }
+
+  /* ---------------- event delegation ---------------- */
+  function onRootClick(e){
+    if(e.target.classList && e.target.classList.contains("modal-overlay")){ closeModal(); return; }
+    var actionEl = e.target.closest ? e.target.closest("[data-action]") : null;
+    if(!actionEl) return;
+    var action = actionEl.getAttribute("data-action");
+    var id = actionEl.getAttribute("data-id");
+    switch(action){
+      case "tab-role": authUi.role = actionEl.getAttribute("data-role"); authUi.mode = "login"; renderAuth(); break;
+      case "tab-mode": authUi.mode = actionEl.getAttribute("data-mode"); renderAuth(); break;
+      case "submit-login": handleLogin(authUi.role); break;
+      case "submit-signup": handleCitizenSignup(); break;
+      case "logout": logout(); break;
+      case "open-report-form": openReportForm(); break;
+      case "close-modal": closeModal(); break;
+      case "use-location": useLocation(); break;
+      case "submit-report": submitReport(); break;
+      case "open-citizen-detail": openCitizenDetail(id); break;
+      case "open-admin-detail": openAdminDetail(id); break;
+      case "save-admin-status": saveAdminStatus(id); break;
+    }
+  }
+  function onRootChange(e){
+    if(e.target.id === "report-photo"){
+      var file = e.target.files[0];
+      var wrap = $("photo-preview-wrap");
+      if(file){ wrap.innerHTML = '<img class="photo-preview" src="' + URL.createObjectURL(file) + '" alt="Selected photo preview">'; }
+      else{ wrap.innerHTML = ""; }
+    } else if(e.target.id === "admin-status-filter" || e.target.id === "admin-category-filter" || e.target.id === "admin-sort"){
+      adminFilters.status = $("admin-status-filter").value;
+      adminFilters.category = $("admin-category-filter").value;
+      adminFilters.sort = $("admin-sort").value;
+      renderAdminTableOnly();
+    }
+  }
+  function onRootInput(e){
+    if(e.target.id === "admin-search"){
+      adminFilters.q = e.target.value;
+      renderAdminTableOnly();
+    }
+  }
+
+  document.getElementById("root").addEventListener("click", onRootClick);
+  document.getElementById("root").addEventListener("change", onRootChange);
+  document.getElementById("root").addEventListener("input", onRootInput);
+
+  init();
+})();
+</script>
+</body>
+</html>
